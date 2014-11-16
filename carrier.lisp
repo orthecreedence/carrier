@@ -68,8 +68,11 @@
                                         :header-callback header-callback
                                         :body-callback body-callback
                                         :finish-callback our-finish-callback))
-         (request-data (build-request parsed method headers body)))
-    (setf sock (cl-async:tcp-connect
+         (request-data (build-request parsed method headers body))
+         (connect-fn (if (string= (quri:uri-scheme parsed) "https")
+                         'as-ssl:tcp-ssl-connect
+                         'as:tcp-connect)))
+    (setf sock (funcall connect-fn
                  (quri:uri-host parsed)
                  (or (quri:uri-port parsed) 80)
                  (lambda (sock data)
