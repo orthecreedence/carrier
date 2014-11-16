@@ -11,7 +11,7 @@ lightweight cousin to [drakma-async](/orthecreedence/drakma-async).
 ### request (function)
 
 ```lisp
-(defun request (url &key (method :get) headers body header-callback body-callback finish-callback))
+(defun request (url &key (method :get) headers body store-body header-callback body-callback finish-callback))
   => promise
 ```
 
