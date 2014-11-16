@@ -5,6 +5,7 @@
   :description "An async HTTP client"
   :depends-on (#:alexandria
                #:babel
+               #:fast-io
                #:cl-async 
                #-(or :carrier-no-ssl) #:cl-async-ssl
                #:cl-async-future

@@ -50,6 +50,7 @@
                     (method :get)
                     headers
                     body
+                    store-body
                     header-callback
                     body-callback
                     finish-callback)
@@ -58,15 +59,29 @@
          (future (make-future))
          (http (fast-http:make-http-response))
          (sock nil)
+         (body-buffer (fast-io:make-output-buffer))
+         (response-headers nil)
+         (our-header-callback (lambda (headers)
+                                (setf response-headers headers)
+                                (when header-callback
+                                  (funcall header-callback headers))))
+         (our-body-callback (lambda (chunk start end)
+                              (when store-body
+                                (fast-io:fast-write-sequence chunk body-buffer start end))
+                              (when body-callback
+                                (funcall body-callback chunk start end))))
          (our-finish-callback (lambda ()
                                 (unless (as:socket-closed-p sock)
                                   (as:close-socket sock))
                                 (when finish-callback
                                   (funcall finish-callback))
-                                (finish future)))
+                                (let ((body (when store-body
+                                              (fast-io:finish-output-buffer body-buffer)))
+                                      (status (fast-http:http-status http)))
+                                  (finish future body status response-headers))))
          (parser (fast-http:make-parser http
-                                        :header-callback header-callback
-                                        :body-callback body-callback
+                                        :header-callback our-header-callback
+                                        :body-callback our-body-callback
                                         :finish-callback our-finish-callback))
          (request-data (build-request parsed method headers body))
          (connect-fn (if (string= (quri:uri-scheme parsed) "https")
