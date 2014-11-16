@@ -28,6 +28,10 @@ argument is passed, then "Content-Length" is set as well.
 the "Content-Length" header automatically in the request.
 - `header-callback` - A function that is called once the headers from the
 *response* are fully parsed. The only argument is a hash table of headers.
+```lisp
+:header-callback (lambda (headers)
+                   (gethash "content-type" headers))
+```
 - `body-callback` - A function that is called once for each chunk of the HTTP
 response body. The function takes three arguments: a byte array, an index
 indicating the start of the chunk in the passed byte array, and an index
@@ -40,6 +44,10 @@ indicating the end of the chunk in the passed byte array. For instance:
 - `finish-callback` - A function of no arguments that is called once the
 response is completely finished downloading. This gets called just before the
 returned promise is finished.
+```lisp
+:finish-callback (lambda ()
+                   (my-app:all-done))
+```
 
 ## License
 
