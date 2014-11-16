@@ -61,7 +61,8 @@
          (our-finish-callback (lambda ()
                                 (unless (as:socket-closed-p sock)
                                   (as:close-socket sock))
-                                (funcall finish-callback)
+                                (when finish-callback
+                                  (funcall finish-callback))
                                 (finish future)))
          (parser (fast-http:make-parser http
                                         :header-callback header-callback
