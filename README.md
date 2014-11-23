@@ -32,8 +32,7 @@ value of the finished promise will be `nil`.
 - `header-callback` - A function that is called once the headers from the
 *response* are fully parsed. The only argument is a hash table of headers.
 ```lisp
-:header-callback (lambda (headers)
-                   (gethash "content-type" headers))
+(lambda (headers) (gethash "content-type" headers))
 ```
 - `body-callback` - A function that is called once for each chunk of the HTTP
 response body. The function takes three arguments: a byte array, an index
