@@ -11,7 +11,7 @@ lightweight cousin to [drakma-async](/orthecreedence/drakma-async).
 ### request (function)
 
 ```lisp
-(defun request (url &key (method :get) headers body store-body header-callback body-callback finish-callback))
+(defun request (url &key (method :get) headers body return-body header-callback body-callback finish-callback (redirect 5) redirect-non-get timeout))
   => promise
 ```
 
@@ -40,17 +40,31 @@ response body. The function takes three arguments: a byte array, an index
 indicating the start of the chunk in the passed byte array, and an index
 indicating the end of the chunk in the passed byte array. For instance:
 ```lisp
-:body-callback (lambda (chunk start end)
-                 ;; get the body chunk
-                 (subseq chunk start end))
+(lambda (chunk start end)
+  ;; here's how you'd get the actual bytes. note that most stream functions
+  ;; take :start and :end functions, so we don't actually have to do a subseq
+  ;; to send the chunk where we need it to go
+  (subseq chunk start end))
 ```
 - `finish-callback` - A function of no arguments that is called once the
 response is completely finished downloading. This gets called just before the
 returned promise is finished.
 ```lisp
-:finish-callback (lambda ()
-                   (my-app:all-done))
+(lambda () ...)
 ```
+- `redirect` - Either nil or an integer value telling Carrier how many redirects
+(if any) to follow before completing. Default is `5`.
+- `redirect-non-get` - This argument determines whether or not we redirect when
+performing a request other than a `:get` or `:head`. If `t`, we just redirect
+blindly until either we hit our destination *or* the max number of redirects
+(set by the `:redirect` arg) is reached. However, `:redirect-non-get` can also
+be a function of two arguments (the redirecting URL given in the `Location`
+header and the response headers hash table).
+```lisp
+(lambda (redirecting-url headers) ...)
+```
+- `timeout` - How many seconds to wait for the socket to start reading. If `nil`
+(the default), uses the OS default.
 
 ## License
 

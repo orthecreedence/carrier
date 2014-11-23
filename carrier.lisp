@@ -46,14 +46,18 @@
       (when body
         (format s "~a" (babel:octets-to-string body))))))
 
-(defun request (url &key
+(defun request (url &rest args
+                    &key
                     (method :get)
                     headers
                     body
-                    store-body
+                    return-body
                     header-callback
                     body-callback
-                    finish-callback)
+                    finish-callback
+                    (redirect 5)
+                    redirect-non-get
+                    timeout)
   "Make an HTTP request."
   (let* ((parsed (quri:uri url))
          (future (make-future))
@@ -61,24 +65,43 @@
          (sock nil)
          (body-buffer (fast-io:make-output-buffer))
          (response-headers nil)
+         (redirected nil)
          (our-header-callback (lambda (headers)
-                                (setf response-headers headers)
-                                (when header-callback
-                                  (funcall header-callback headers))))
+                                (let* ((location (gethash "location" headers))
+                                       (location (and (stringp location)
+                                                      (string-trim #(#\return #\newline #\space) location))))
+                                  (if (and (integerp redirect)
+                                           (< 0 redirect)
+                                           location
+                                           (not (zerop (length location)))
+                                           (or (if (functionp redirect-non-get)
+                                                   (funcall redirect-non-get location headers)
+                                                   redirect-non-get)
+                                               (find method '(:get :head) :test 'eq)))
+                                      (let ((args (copy-list args)))
+                                        (setf redirected t)
+                                        (setf (getf args :redirect) (1- redirect))
+                                        (finish future (apply 'request (append (list location) args))))
+                                      (progn
+                                        (setf response-headers headers)
+                                        (when header-callback
+                                          (funcall header-callback headers)))))))
          (our-body-callback (lambda (chunk start end)
-                              (when store-body
-                                (fast-io:fast-write-sequence chunk body-buffer start end))
-                              (when body-callback
-                                (funcall body-callback chunk start end))))
+                              (unless redirected
+                                (when return-body
+                                  (fast-io:fast-write-sequence chunk body-buffer start end))
+                                (when body-callback
+                                  (funcall body-callback chunk start end)))))
          (our-finish-callback (lambda ()
-                                (unless (as:socket-closed-p sock)
-                                  (as:close-socket sock))
-                                (when finish-callback
-                                  (funcall finish-callback))
-                                (let ((body (when store-body
-                                              (fast-io:finish-output-buffer body-buffer)))
-                                      (status (fast-http:http-status http)))
-                                  (finish future body status response-headers))))
+                                (unless redirected
+                                  (unless (as:socket-closed-p sock)
+                                    (as:close-socket sock))
+                                  (when finish-callback
+                                    (funcall finish-callback))
+                                  (let ((body (when return-body
+                                                (fast-io:finish-output-buffer body-buffer)))
+                                        (status (fast-http:http-status http)))
+                                    (finish future body status response-headers)))))
          (parser (fast-http:make-parser http
                                         :header-callback our-header-callback
                                         :body-callback our-body-callback
@@ -106,6 +129,7 @@
                                                            :msg "HTTP stream client timed out.")))
                      (t ()
                        (signal-error future ev))))
-                 :data request-data))
+                 :data request-data
+                 :read-timeout timeout))
     future))
 
