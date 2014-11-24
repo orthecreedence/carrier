@@ -81,6 +81,7 @@
                                       (let ((args (copy-list args)))
                                         (setf redirected t)
                                         (setf (getf args :redirect) (1- redirect))
+                                        (as:close-socket sock)
                                         (finish future (apply 'request (append (list location) args))))
                                       (progn
                                         (setf response-headers headers)
