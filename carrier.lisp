@@ -26,6 +26,8 @@
   "Build an HTTP request."
   (let ((nl (format nil "~c~c" #\return #\newline))
         (method (string-upcase (string method)))
+        (path (quri:uri-path parsed-uri))
+        (query (quri:uri-query parsed-uri))
         (headers (if (hash-table-p headers)
                      (alexandria:hash-table-plist headers)
                      headers))
@@ -38,7 +40,7 @@
     (when body
       (setf (getf headers :content-length) (length body)))
     (with-output-to-string (s)
-      (format s "~a ~a HTTP/1.1~a" method (quri:uri-path parsed-uri) nl)
+      (format s "~a ~a~@[?~a~] HTTP/1.1~a" method path query nl)
       (loop for (k v) on headers by #'cddr do
         (let ((key (header-capitalize k)))
           (format s "~a: ~a~a" key v nl)))
