@@ -119,19 +119,20 @@
                  (lambda (sock data)
                    (declare (ignore sock))
                    (funcall parser data))
-                 (lambda (ev)
-                   (handler-case (error ev)
-                     (as:tcp-eof ()
-                       (funcall parser :eof)
-                       (signal-error future (make-instance 'http-eof
-                                                           :code -1
-                                                           :msg "HTTP stream client peer closed connection.")))
-                     (as:tcp-timeout ()
-                       (signal-error future (make-instance 'http-timeout
-                                                           :code -1
-                                                           :msg "HTTP stream client timed out.")))
-                     (t ()
-                       (signal-error future ev))))
+                 :event-db
+                   (lambda (ev)
+                     (handler-case (error ev)
+                       (as:tcp-eof ()
+                         (funcall parser :eof)
+                         (signal-error future (make-instance 'http-eof
+                                                             :code -1
+                                                             :msg "HTTP stream client peer closed connection.")))
+                       (as:tcp-timeout ()
+                         (signal-error future (make-instance 'http-timeout
+                                                             :code -1
+                                                             :msg "HTTP stream client timed out.")))
+                       (error ()
+                         (signal-error future ev))))
                  :data request-data
                  :read-timeout timeout))
     future))
