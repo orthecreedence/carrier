@@ -119,7 +119,7 @@
                  (lambda (sock data)
                    (declare (ignore sock))
                    (funcall parser data))
-                 :event-db
+                 :event-cb
                    (lambda (ev)
                      (handler-case (error ev)
                        (as:tcp-eof ()
