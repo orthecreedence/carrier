@@ -61,79 +61,77 @@
                     redirect-non-get
                     timeout)
   "Make an HTTP request."
-  (let* ((parsed (quri:uri url))
-         (future (make-future))
-         (http (fast-http:make-http-response))
-         (sock nil)
-         (body-buffer (fast-io:make-output-buffer))
-         (response-headers nil)
-         (redirected nil)
-         (our-header-callback (lambda (headers)
-                                (let* ((location (gethash "location" headers))
-                                       (location (and (stringp location)
-                                                      (string-trim #(#\return #\newline #\space) location))))
-                                  (if (and (integerp redirect)
-                                           (< 0 redirect)
-                                           location
-                                           (not (zerop (length location)))
-                                           (or (if (functionp redirect-non-get)
-                                                   (funcall redirect-non-get location headers)
-                                                   redirect-non-get)
-                                               (find method '(:get :head) :test 'eq)))
-                                      (let ((args (copy-list args)))
-                                        (setf redirected t)
-                                        (setf (getf args :redirect) (1- redirect))
-                                        (as:close-socket sock)
-                                        (finish future (apply 'request (append (list location) args))))
-                                      (progn
-                                        (setf response-headers headers)
-                                        (when header-callback
-                                          (funcall header-callback headers)))))))
-         (our-body-callback (lambda (chunk start end)
-                              (unless redirected
-                                (when return-body
-                                  (fast-io:fast-write-sequence chunk body-buffer start end))
-                                (when body-callback
-                                  (funcall body-callback chunk start end)))))
-         (our-finish-callback (lambda ()
+  (with-promise (resolve reject)
+    (let* ((parsed (quri:uri url))
+           (http (fast-http:make-http-response))
+           (sock nil)
+           (body-buffer (fast-io:make-output-buffer))
+           (response-headers nil)
+           (redirected nil)
+           (our-header-callback (lambda (headers)
+                                  (let* ((location (gethash "location" headers))
+                                         (location (and (stringp location)
+                                                        (string-trim #(#\return #\newline #\space) location))))
+                                    (if (and (integerp redirect)
+                                             (< 0 redirect)
+                                             location
+                                             (not (zerop (length location)))
+                                             (or (if (functionp redirect-non-get)
+                                                     (funcall redirect-non-get location headers)
+                                                     redirect-non-get)
+                                                 (find method '(:get :head) :test 'eq)))
+                                        (let ((args (copy-list args)))
+                                          (setf redirected t)
+                                          (setf (getf args :redirect) (1- redirect))
+                                          (as:close-socket sock)
+                                          (finish future (apply 'request (append (list location) args))))
+                                        (progn
+                                          (setf response-headers headers)
+                                          (when header-callback
+                                            (funcall header-callback headers)))))))
+           (our-body-callback (lambda (chunk start end)
                                 (unless redirected
-                                  (unless (as:socket-closed-p sock)
-                                    (as:close-socket sock))
-                                  (when finish-callback
-                                    (funcall finish-callback))
-                                  (let ((body (when return-body
-                                                (fast-io:finish-output-buffer body-buffer)))
-                                        (status (fast-http:http-status http)))
-                                    (finish future body status response-headers)))))
-         (parser (fast-http:make-parser http
-                                        :header-callback our-header-callback
-                                        :body-callback our-body-callback
-                                        :finish-callback our-finish-callback))
-         (request-data (build-request parsed method headers body))
-         (connect-fn (if (string= (quri:uri-scheme parsed) "https")
-                         'as-ssl:tcp-ssl-connect
-                         'as:tcp-connect)))
-    (setf sock (funcall connect-fn
-                 (quri:uri-host parsed)
-                 (or (quri:uri-port parsed) 80)
-                 (lambda (sock data)
-                   (declare (ignore sock))
-                   (funcall parser data))
-                 :event-cb
-                   (lambda (ev)
-                     (handler-case (error ev)
-                       (as:tcp-eof ()
-                         (funcall parser :eof)
-                         (signal-error future (make-instance 'http-eof
-                                                             :code -1
-                                                             :msg "HTTP stream client peer closed connection.")))
-                       (as:tcp-timeout ()
-                         (signal-error future (make-instance 'http-timeout
-                                                             :code -1
-                                                             :msg "HTTP stream client timed out.")))
-                       (error ()
-                         (signal-error future ev))))
-                 :data request-data
-                 :read-timeout timeout))
-    future))
+                                  (when return-body
+                                    (fast-io:fast-write-sequence chunk body-buffer start end))
+                                  (when body-callback
+                                    (funcall body-callback chunk start end)))))
+           (our-finish-callback (lambda ()
+                                  (unless redirected
+                                    (unless (as:socket-closed-p sock)
+                                      (as:close-socket sock))
+                                    (when finish-callback
+                                      (funcall finish-callback))
+                                    (let ((body (when return-body
+                                                  (fast-io:finish-output-buffer body-buffer)))
+                                          (status (fast-http:http-status http)))
+                                      (resolve body status response-headers)))))
+           (parser (fast-http:make-parser http
+                                          :header-callback our-header-callback
+                                          :body-callback our-body-callback
+                                          :finish-callback our-finish-callback))
+           (request-data (build-request parsed method headers body))
+           (connect-fn (if (string= (quri:uri-scheme parsed) "https")
+                           'as-ssl:tcp-ssl-connect
+                           'as:tcp-connect)))
+      (setf sock (funcall connect-fn
+                   (quri:uri-host parsed)
+                   (or (quri:uri-port parsed) 80)
+                   (lambda (sock data)
+                     (declare (ignore sock))
+                     (funcall parser data))
+                   :event-cb
+                     (lambda (ev)
+                       (typecase ev
+                         (as:tcp-eof
+                           (funcall parser :eof)
+                           (reject (make-instance 'http-eof
+                                                  :code -1
+                                                  :msg "HTTP stream client peer closed connection.")))
+                         (as:tcp-timeout
+                           (reject (make-instance 'http-timeout
+                                                  :code -1
+                                                  :msg "HTTP stream client timed out.")))
+                         (t (reject ev))))
+                   :data request-data
+                   :read-timeout timeout)))))
 

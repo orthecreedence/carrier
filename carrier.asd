@@ -8,7 +8,7 @@
                #:fast-io
                #:cl-async 
                #-(or :carrier-no-ssl) #:cl-async-ssl
-               #:cl-async-future
+               #:blackbird
                #:quri
                #:fast-http
                #:fast-io)

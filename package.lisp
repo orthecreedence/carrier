@@ -1,4 +1,4 @@
 (defpackage :carrier
-  (:use :cl :cl-async-future)
+  (:use :cl :blackbird)
   (:export #:request))
 
