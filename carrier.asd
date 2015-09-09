@@ -1,7 +1,7 @@
 (asdf:defsystem carrier
   :author "Andrew Danger Lyon <orthecreedence@gmail.com>"
   :license "MIT"
-  :version "0.1.0"
+  :version "0.1.1"
   :description "An async HTTP client"
   :depends-on (#:alexandria
                #:babel
