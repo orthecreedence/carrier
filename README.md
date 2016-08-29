@@ -26,7 +26,7 @@ that the "Host" header is set automatically (if not proveded) and if the `body`
 argument is passed, then "Content-Length" is set as well.
 - `body` - A string or byte array to send as the HTTP body. If present, will set
 the "Content-Length" header automatically in the request.
-- `store-body` - If T, will store the entire HTTP response body and finish the
+- `return-body` - If T, will store the entire HTTP response body and finish the
 returned promise with it once complete. If this is left `nil`, then the first
 value of the finished promise will be `nil`.
 - `header-callback` - A function that is called once the headers from the
