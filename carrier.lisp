@@ -26,7 +26,7 @@
   "Build an HTTP request."
   (let ((nl (format nil "~c~c" #\return #\newline))
         (method (string-upcase (string method)))
-        (path (quri:uri-path parsed-uri))
+        (path (or (quri:uri-path parsed-uri) "/"))
         (query (quri:uri-query parsed-uri))
         (headers (if (hash-table-p headers)
                      (alexandria:hash-table-plist headers)
