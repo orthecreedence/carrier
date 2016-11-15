@@ -1,10 +1,10 @@
 # Carrier
 
-Carrier is a lightweight, async HTTP client built on top of [cl-async](/orthecreedence/cl-async)
-and [fast-http](/fukamachi/fast-http).
+Carrier is a lightweight, async HTTP client built on top of [cl-async](https://github.com/orthecreedence/cl-async)
+and [fast-http](https://github.com/fukamachi/fast-http).
 
 Its goal is to allow easy and efficient streaming of data over HTTP. It is the
-lightweight cousin to [drakma-async](/orthecreedence/drakma-async).
+lightweight cousin to [drakma-async](https://github.com/orthecreedence/drakma-async).
 
 ## Documentation
 
@@ -16,7 +16,7 @@ lightweight cousin to [drakma-async](/orthecreedence/drakma-async).
 ```
 
 Perform an HTTP request. Returns a promise (to be used with
-[cl-async-future](/orthecreedence/cl-async-future)) that is finished when the
+[cl-async-future](https://github.com/orthecreedence/cl-async-future)) that is finished when the
 response has fully downloaded.
 
 - `url` - the URL we're requesting.
