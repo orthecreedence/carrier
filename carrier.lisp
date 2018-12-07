@@ -22,7 +22,7 @@
         (setf (aref str i) (char-up (aref str i)))))
     str))
 
-(defun build-request (parsed-uri method headers body)
+(defun build-request (parsed-uri method headers body &optional cookie-jar)
   "Build an HTTP request."
   (let ((nl (format nil "~c~c" #\return #\newline))
         (method (string-upcase (string method)))
@@ -39,6 +39,13 @@
       (setf (getf headers :host) (quri:uri-host parsed-uri)))
     (when body
       (setf (getf headers :content-length) (length body)))
+    (when cookie-jar
+      (alexandria:when-let
+          ((merge-cookies (cookie-jar-host-cookies cookie-jar
+                                                   (getf headers :host)
+                                                   path
+                                                   :securep (quri.uri.http:uri-https-p parsed-uri))))
+        (setf (getf headers :cookie) (write-cookie-header cookie-header))))
     (with-output-to-string (s)
       (format s "~a ~a~@[?~a~] HTTP/1.1~a" method path query nl)
       (loop for (k v) on headers by #'cddr do
@@ -53,6 +60,7 @@
                     (method :get)
                     headers
                     body
+                    cookie-jar
                     return-body
                     header-callback
                     body-callback
@@ -91,6 +99,18 @@
                                           (resolve (apply 'request (append (list location) args))))
                                         (progn
                                           (setf response-headers headers)
+                                          ;; Lifted from dexador:request
+                                          (when cookie-jar
+                                            (alexandria:when-let (set-cookies (append (gethash "set-cookie" response-headers)
+                                                                                      (alexandria:ensure-list (gethash "set-cookie2" response-headers))))
+                                              (merge-cookies cookie-jar
+                                                             (remove nil (mapcar (lambda (cookie)
+                                                                                   (declare (type string cookie))
+                                                                                   (unless (= (length cookie) 0)
+                                                                                     (parse-set-cookie-header cookie
+                                                                                                              (quri:uri-host parsed)
+                                                                                                              (quri:uri-path parsed))))
+                                                                                 set-cookies)))))
                                           (when header-callback
                                             (funcall header-callback headers)))))))
            (our-body-callback (lambda (chunk start end)
@@ -113,7 +133,7 @@
                                           :header-callback our-header-callback
                                           :body-callback our-body-callback
                                           :finish-callback our-finish-callback))
-           (request-data (build-request parsed method headers body))
+           (request-data (build-request parsed method headers body cookie-jar))
            (connect-fn (if (string= (quri:uri-scheme parsed) "https")
                            'as-ssl:tcp-ssl-connect
                            'as:tcp-connect)))

@@ -11,7 +11,8 @@
                #:blackbird
                #:quri
                #:fast-http
-               #:fast-io)
+               #:fast-io
+               #:cl-cookie)
   :components
   ((:file "package")
    (:file "util" :depends-on ("package"))

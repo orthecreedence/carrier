@@ -11,7 +11,7 @@ lightweight cousin to [drakma-async](https://github.com/orthecreedence/drakma-as
 ### request (function)
 
 ```lisp
-(defun request (url &key (method :get) headers body return-body header-callback body-callback finish-callback (redirect 5) redirect-non-get timeout))
+(defun request (url &key (method :get) headers body cookie-jar return-body header-callback body-callback finish-callback (redirect 5) redirect-non-get timeout))
   => promise
 ```
 
@@ -26,6 +26,8 @@ that the "Host" header is set automatically (if not proveded) and if the `body`
 argument is passed, then "Content-Length" is set as well.
 - `body` - A string or byte array to send as the HTTP body. If present, will set
 the "Content-Length" header automatically in the request.
+- `cookie-jar` - A `cl-cookie` `cookie-jar`. Instantiate one with `(make-instance 'cookie:cookie-jar)`
+and pass it on every request on which cookie processing is to be enabled.
 - `return-body` - If T, will store the entire HTTP response body and finish the
 returned promise with it once complete. If this is left `nil`, then the first
 value of the finished promise will be `nil`.
