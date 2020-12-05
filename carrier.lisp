@@ -128,7 +128,7 @@
                                     (let ((body (when return-body
                                                   (fast-io:finish-output-buffer body-buffer)))
                                           (status (fast-http:http-status http)))
-                                      (resolve body status response-headers)))))
+                                      (resolve (list body status response-headers))))))
            (parser (fast-http:make-parser http
                                           :header-callback our-header-callback
                                           :body-callback our-body-callback
