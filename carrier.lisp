@@ -132,7 +132,8 @@
            (parser (fast-http:make-parser http
                                           :header-callback our-header-callback
                                           :body-callback our-body-callback
-                                          :finish-callback our-finish-callback))
+                                          :finish-callback our-finish-callback
+					  :head-request (eq method :head)))
            (request-data (build-request parsed method headers body cookie-jar))
            (connect-fn (if (string= (quri:uri-scheme parsed) "https")
                            'as-ssl:tcp-ssl-connect
